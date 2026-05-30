@@ -214,5 +214,8 @@ marimo/_static/
 marimo/_lsp/
 __marimo__/
 
+# Dataset files - never commit raw or processed data
+data/
+
 # Streamlit
 .streamlit/secrets.toml

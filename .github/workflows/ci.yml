@@ -1,0 +1,14 @@
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  placeholder:
+    runs-on: ubuntu-latest
+    steps:
+      - name: CI placeholder - full workflow configured in Task 6
+        run: echo "CI pipeline will be configured in Task 6"
