@@ -77,27 +77,73 @@ In a regulated financial context like Bati Bank, the preferred approach is typic
 This project trains both types, tracks all experiments in MLflow, and selects the best model with explicit documentation of the trade-off decision.
 
 
+### Exploratory Data Analysis Summary
+
+The EDA notebook (`notebooks/eda.ipynb`) explores the Xente transaction dataset across 7 sections:
+
+#### Key Findings
+
+1. **Severe Class Imbalance** Only ~0.2% of transactions are fraudulent (193/95,662).
+   F1 and Precision-Recall AUC are the correct evaluation metrics, not accuracy.
+
+2. **Amount is Bidirectional; Value is Always Positive** `Amount` contains both
+   credits (negative) and debits (positive). The sign of Amount is a meaningful
+   feature. `Value` is always the absolute amount.
+
+3. **Extreme Outliers Require Log Transformation** Both `Amount` and `Value` are
+   highly right-skewed with heavy tails reaching tens of millions UGX.
+   Feature engineering must apply `log1p` transformation and/or robust scaling.
+
+4. **Strong Temporal Patterns** Activity peaks at 16:00–17:00 and is near-zero
+   between midnight and 4 AM. `transaction_hour` and `transaction_day_of_week`
+   carry predictive signal and will be extracted in Task 3.
+
+5. **ProductCategory Drives Fraud Rate Unevenly** `transport` has an 8% fraud rate;
+   `financial_services` 0.35%; `airtime` near zero. WoE encoding per category
+   will capture this risk gradient better than one-hot encoding.
+
+Zero missing values found across all 16 columns.
+`CountryCode` is zero-variance (constant = 256) will be dropped in Task 3.
+
 ### Setup
 
 ```bash
-# Clone the repo
-git clone https://github.com/.../credit_risk_model__.git
-cd credit-risk-model
+# 1. Clone the repository
+git clone https://github.com/Maki4444444/credit_risk_model__.git
+cd credit_risk_model__
 
-# Create a virtual environment
-python3.11 -m venv venv
-source venv/bin/activate
+# 2. Create a virtual environment (Python 3.11 required)
+python -m venv .venv
 
-# Install dependencies
+# Windows
+.venv\Scripts\activate
+
+# macOS/Linux
+source .venv/bin/activate
+
+# 3. Install dependencies
 pip install -r requirements.txt
+
+# 4. Place the Xente dataset in data/raw/
+# Download from: https://www.kaggle.com/datasets/atwine/xente-challenge
+# Expected file: data/raw/data.csv
+
+> **Note:** `data/` is excluded from version control. You must download
+> the dataset manually and place it in `data/raw/` before running any notebooks.
+
+### Notebooks
+
+| Notebook | Description | nbviewer |
+|---|---|---|
+| `notebooks/eda.ipynb` | Task 2 — Exploratory Data Analysis | [View](https://nbviewer.org/github/Maki4444444/credit_risk_model__/blob/main/notebooks/eda.ipynb) |
 
 
 ## Tasks
 
 | Task | Description | Branch | Status |
 |---|---|---|---|
-| 1 | Business Understanding + Repo Setup | `task-1` | Complete |
-| 2 | Exploratory Data Analysis | `task-2` | To Be Completed | 
+| 1 | Business Understanding + Repo Setup | `task-1` | Completed |
+| 2 | Exploratory Data Analysis | `task-2` | Completed | 
 | 3 | Feature Engineering Pipeline | `task-3` | To Be Completed |
 | 4 | Proxy Target Variable Engineering | `task-4` | To Be Completed |
 | 5 | Model Training & MLflow Tracking | `task-5` | To Be Completed |
