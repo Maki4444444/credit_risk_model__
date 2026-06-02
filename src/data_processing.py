@@ -690,7 +690,6 @@ class MissingValueImputer(BaseEstimator, TransformerMixin):
         X[self._fitted_cols] = self._imputer.transform(X[self._fitted_cols])
         return X
 
-
 # ════════════════════════════════════════════════════════════════════════════
 # SECTION 6 — Pipeline Builder
 # ════════════════════════════════════════════════════════════════════════════
