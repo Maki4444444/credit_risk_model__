@@ -15,7 +15,7 @@ Deliverable (Task 3): A single fitted sklearn Pipeline object that produces
 a model-ready DataFrame from raw input, exposed via fit_transform_pipeline().
 
 Used by:
-    - notebooks/eda.ipynb          (Task 2 EDA utility functions)
+    - notebooks/eda.ipynb          (Task 2 — EDA utility functions)
     - src/train.py                 (Task 5)
     - src/predict.py               (Task 5)
     - src/api/main.py              (Task 6)
@@ -536,30 +536,27 @@ class AggregateFeatureBuilder(BaseEstimator, TransformerMixin):
 
     def transform(self, X: pd.DataFrame) -> pd.DataFrame:
         agg = (
-    X.groupby(self.customer_col)
-    .agg(
-        total_transaction_amount=(self.amount_col, "sum"),
-        avg_transaction_amount=(self.amount_col, "mean"),
-        transaction_count=(self.amount_col, "count"),
-        std_transaction_amount=(self.amount_col, "std"),
-        total_value=(self.value_col, "sum"),
-        avg_value=(self.value_col, "mean"),
-
-        transaction_hour=("transaction_hour", "mean"),
-        transaction_day_of_week=("transaction_day_of_week", "mean"),
-        transaction_day=("transaction_day", "mean"),
-        transaction_month=("transaction_month", "mean"),
-        transaction_year=("transaction_year", "mean"),
-
-        ProviderId=("ProviderId", lambda x: x.mode().iloc[0]),
-        ProductCategory=("ProductCategory", lambda x: x.mode().iloc[0]),
-        ChannelId=("ChannelId", lambda x: x.mode().iloc[0]),
-
-        PricingStrategy=("PricingStrategy", "mean"),
-        FraudResult=("FraudResult", "max"),
-    )
-    .reset_index()
-)
+            X.groupby(self.customer_col)
+            .agg(
+                total_transaction_amount=(self.amount_col, "sum"),
+                avg_transaction_amount=(self.amount_col, "mean"),
+                transaction_count=(self.amount_col, "count"),
+                std_transaction_amount=(self.amount_col, "std"),
+                total_value=(self.value_col, "sum"),
+                avg_value=(self.value_col, "mean"),
+                transaction_hour=("transaction_hour", "mean"),
+                transaction_day_of_week=("transaction_day_of_week", "mean"),
+                transaction_day=("transaction_day", "mean"),
+                transaction_month=("transaction_month", "mean"),
+                transaction_year=("transaction_year", "mean"),
+                ProviderId=("ProviderId", lambda x: x.mode().iloc[0] if len(x) > 0 else np.nan),
+                ProductCategory=("ProductCategory", lambda x: x.mode().iloc[0] if len(x) > 0 else np.nan),
+                ChannelId=("ChannelId", lambda x: x.mode().iloc[0] if len(x) > 0 else np.nan),
+                PricingStrategy=("PricingStrategy", "mean"),
+                FraudResult=("FraudResult", "max"),
+            )
+            .reset_index()
+        )
         agg["std_transaction_amount"] = agg["std_transaction_amount"].fillna(0)
         return agg
 
@@ -835,3 +832,242 @@ def get_outlier_report(df: pd.DataFrame, columns: list) -> pd.DataFrame:
             "upper_fence": round(upper, 2),
         })
     return pd.DataFrame(rows).set_index("column")
+
+
+# ════════════════════════════════════════════════════════════════════════════
+# SECTION 8 — Proxy Target Variable Engineering (Task 4)
+# ════════════════════════════════════════════════════════════════════════════
+
+from sklearn.cluster import KMeans
+
+
+def compute_rfm(
+    df: pd.DataFrame,
+    snapshot_date: pd.Timestamp = None,
+    customer_col: str = "CustomerId",
+    date_col: str = "TransactionStartTime",
+    amount_col: str = "Value",
+) -> pd.DataFrame:
+    """
+    Compute Recency, Frequency, and Monetary (RFM) metrics per customer
+    from raw transaction-level data.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        Raw Xente transaction DataFrame.
+    snapshot_date : pd.Timestamp, optional
+        Reference date for recency calculation.
+        Defaults to one day after the latest transaction in the dataset.
+    customer_col : str
+        Column identifying the customer (default: 'CustomerId').
+    date_col : str
+        Datetime column for recency (default: 'TransactionStartTime').
+    amount_col : str
+        Monetary value column (default: 'Value').
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per customer with columns:
+        CustomerId, recency, frequency, monetary
+
+    Raises
+    ------
+    TypeError
+        If df is not a DataFrame.
+    KeyError
+        If required columns are missing.
+    ValueError
+        If date_col cannot be parsed as datetime.
+    """
+    if not isinstance(df, pd.DataFrame):
+        raise TypeError(f"Expected pd.DataFrame, got {type(df)}")
+
+    required = [customer_col, date_col, amount_col]
+    missing = [c for c in required if c not in df.columns]
+    if missing:
+        raise KeyError(f"Missing required columns for RFM: {missing}")
+
+    df = df.copy()
+
+    if not pd.api.types.is_datetime64_any_dtype(df[date_col]):
+        try:
+            df[date_col] = pd.to_datetime(df[date_col])
+        except Exception as exc:
+            raise ValueError(
+                f"Cannot parse '{date_col}' as datetime: {exc}"
+            ) from exc
+
+    if snapshot_date is None:
+        snapshot_date = df[date_col].max() + pd.Timedelta(days=1)
+        logger.info("Snapshot date set to: %s", snapshot_date)
+
+    rfm = (
+        df.groupby(customer_col)
+        .agg(
+            recency=(date_col, lambda x: (snapshot_date - x.max()).days),
+            frequency=(date_col, "count"),
+            monetary=(amount_col, "sum"),
+        )
+        .reset_index()
+    )
+
+    logger.info(
+        "RFM computed for %d customers. Snapshot date: %s",
+        len(rfm), snapshot_date,
+    )
+    return rfm
+
+
+def assign_high_risk_label(
+    rfm: pd.DataFrame,
+    n_clusters: int = 3,
+    random_state: int = 42,
+) -> pd.DataFrame:
+    """
+    Cluster customers on scaled RFM features using K-Means and label
+    the highest-risk cluster as is_high_risk = 1.
+
+    The high-risk cluster is identified as the one with the lowest
+    frequency and lowest monetary value — indicating disengaged customers
+    who are least active and generate the least value, consistent with
+    the behavioral finance logic that RFM disengagement precedes default.
+
+    Parameters
+    ----------
+    rfm : pd.DataFrame
+        Output of compute_rfm() with columns: CustomerId, recency,
+        frequency, monetary.
+    n_clusters : int
+        Number of K-Means clusters (default: 3).
+    random_state : int
+        Random seed for reproducibility (default: 42).
+
+    Returns
+    -------
+    pd.DataFrame
+        rfm DataFrame with two new columns:
+        - cluster     : integer cluster label (0, 1, or 2)
+        - is_high_risk: binary label (1 = high risk, 0 = low risk)
+
+    Raises
+    ------
+    TypeError
+        If rfm is not a DataFrame.
+    KeyError
+        If required RFM columns are missing.
+    ValueError
+        If n_clusters is less than 2.
+    """
+    if not isinstance(rfm, pd.DataFrame):
+        raise TypeError(f"Expected pd.DataFrame, got {type(rfm)}")
+
+    required = ["recency", "frequency", "monetary"]
+    missing = [c for c in required if c not in rfm.columns]
+    if missing:
+        raise KeyError(f"Missing RFM columns: {missing}")
+
+    if n_clusters < 2:
+        raise ValueError(f"n_clusters must be >= 2, got {n_clusters}")
+
+    rfm = rfm.copy()
+
+    # Scale RFM before clustering
+    scaler = StandardScaler()
+    rfm_scaled = scaler.fit_transform(rfm[["recency", "frequency", "monetary"]])
+
+    # K-Means clustering
+    kmeans = KMeans(n_clusters=n_clusters, random_state=random_state, n_init=10)
+    rfm["cluster"] = kmeans.fit_predict(rfm_scaled)
+
+    # Identify the high-risk cluster: lowest frequency + lowest monetary
+    cluster_summary = (
+        rfm.groupby("cluster")[["frequency", "monetary"]]
+        .mean()
+    )
+    # Score each cluster: lower frequency and monetary = higher risk
+    cluster_summary["risk_score"] = (
+        cluster_summary["frequency"].rank(ascending=True)
+        + cluster_summary["monetary"].rank(ascending=True)
+    )
+    high_risk_cluster = cluster_summary["risk_score"].idxmin()
+
+    rfm["is_high_risk"] = (rfm["cluster"] == high_risk_cluster).astype(int)
+
+    logger.info(
+        "High-risk cluster identified: cluster %d "
+        "(mean freq=%.2f, mean monetary=%.2f). "
+        "High-risk customers: %d / %d (%.1f%%)",
+        high_risk_cluster,
+        cluster_summary.loc[high_risk_cluster, "frequency"],
+        cluster_summary.loc[high_risk_cluster, "monetary"],
+        rfm["is_high_risk"].sum(),
+        len(rfm),
+        rfm["is_high_risk"].mean() * 100,
+    )
+    return rfm
+
+
+def build_model_dataset(
+    processed_df: pd.DataFrame,
+    rfm: pd.DataFrame,
+    customer_col: str = "CustomerId",
+) -> pd.DataFrame:
+    """
+    Merge the is_high_risk label from the RFM DataFrame into the
+    processed feature DataFrame produced by fit_transform_pipeline().
+
+    Parameters
+    ----------
+    processed_df : pd.DataFrame
+        Output of fit_transform_pipeline() — customer-level feature matrix.
+    rfm : pd.DataFrame
+        Output of assign_high_risk_label() — contains is_high_risk column.
+    customer_col : str
+        Column to join on (default: 'CustomerId').
+
+    Returns
+    -------
+    pd.DataFrame
+        Merged DataFrame ready for model training, with is_high_risk
+        as the target column.
+
+    Raises
+    ------
+    KeyError
+        If customer_col or is_high_risk column is missing.
+    ValueError
+        If the merge produces no rows.
+    """
+    if customer_col not in processed_df.columns:
+        raise KeyError(
+            f"'{customer_col}' not found in processed DataFrame."
+        )
+    if customer_col not in rfm.columns:
+        raise KeyError(
+            f"'{customer_col}' not found in RFM DataFrame."
+        )
+    if "is_high_risk" not in rfm.columns:
+        raise KeyError(
+            "'is_high_risk' column not found in RFM DataFrame. "
+            "Run assign_high_risk_label() first."
+        )
+
+    label_df = rfm[[customer_col, "is_high_risk"]]
+    merged = processed_df.merge(label_df, on=customer_col, how="inner")
+
+    if merged.empty:
+        raise ValueError(
+            "Merge produced an empty DataFrame. "
+            "Check that customer IDs match between processed_df and rfm."
+        )
+
+    logger.info(
+        "Model dataset built: %d customers × %d features "
+        "(high-risk rate: %.1f%%)",
+        merged.shape[0],
+        merged.shape[1],
+        merged["is_high_risk"].mean() * 100,
+    )
+    return merged
