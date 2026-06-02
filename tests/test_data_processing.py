@@ -7,21 +7,20 @@ Run with:
     pytest tests/test_data_processing.py -v
 """
 
-import numpy as np
-import pandas as pd
-import pytest
-import sys
 import os
+import sys
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from src.data_processing import (
+import pandas as pd  # noqa: E402
+import pytest  # noqa: E402
+
+from src.data_processing import (  # noqa: E402
     cap_outliers,
     compute_rfm,
     assign_high_risk_label,
     engineer_features,
     get_data_overview,
-    get_missing_value_report,
     get_outlier_report,
     build_model_dataset,
 )
@@ -42,8 +41,10 @@ def sample_transactions():
         "CountryCode": [256] * 6,
         "ProviderId": ["ProviderId_4"] * 6,
         "ProductId": ["ProductId_1"] * 6,
-        "ProductCategory": ["airtime", "airtime", "financial_services",
-                             "financial_services", "airtime", "utility_bill"],
+        "ProductCategory": [
+            "airtime", "airtime", "financial_services",
+            "financial_services", "airtime", "utility_bill"
+        ],
         "ChannelId": ["ChannelId_3"] * 6,
         "Amount": [1000, 2000, 500, -200, 3000, 1500],
         "Value": [1000, 2000, 500, 200, 3000, 1500],
@@ -65,14 +66,14 @@ def sample_rfm():
     """Minimal RFM DataFrame for clustering tests."""
     return pd.DataFrame({
         "CustomerId": [f"C{i}" for i in range(20)],
-        "recency":    [10, 90, 5, 120, 30, 200, 15, 80, 45, 160,
-                       20, 100, 8, 140, 25, 180, 12, 95, 50, 170],
-        "frequency":  [50, 3, 80, 2, 30, 1, 60, 5, 25, 2,
-                       45, 4, 70, 2, 35, 1, 55, 6, 20, 3],
-        "monetary":   [500000, 5000, 900000, 3000, 200000, 1000,
-                       700000, 8000, 150000, 2000, 400000, 6000,
-                       800000, 2500, 250000, 500, 600000, 7000,
-                       120000, 4000],
+        "recency": [10, 90, 5, 120, 30, 200, 15, 80, 45, 160,
+                    20, 100, 8, 140, 25, 180, 12, 95, 50, 170],
+        "frequency": [50, 3, 80, 2, 30, 1, 60, 5, 25, 2,
+                      45, 4, 70, 2, 35, 1, 55, 6, 20, 3],
+        "monetary": [500000, 5000, 900000, 3000, 200000, 1000,
+                     700000, 8000, 150000, 2000, 400000, 6000,
+                     800000, 2500, 250000, 500, 600000, 7000,
+                     120000, 4000],
     })
 
 

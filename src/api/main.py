@@ -21,7 +21,6 @@ import os
 
 import mlflow
 import mlflow.sklearn
-import numpy as np
 import pandas as pd
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse

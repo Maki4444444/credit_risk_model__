@@ -24,7 +24,6 @@ import warnings
 
 import mlflow
 import mlflow.sklearn
-import numpy as np
 import pandas as pd
 from sklearn.linear_model import LogisticRegression
 from sklearn.tree import DecisionTreeClassifier
@@ -167,11 +166,11 @@ def evaluate_model(model, X_test: pd.DataFrame, y_test: pd.Series) -> dict:
     )
 
     metrics = {
-        "accuracy":  round(accuracy_score(y_test, y_pred), 4),
+        "accuracy": round(accuracy_score(y_test, y_pred), 4),
         "precision": round(precision_score(y_test, y_pred, zero_division=0), 4),
-        "recall":    round(recall_score(y_test, y_pred, zero_division=0), 4),
-        "f1":        round(f1_score(y_test, y_pred, zero_division=0), 4),
-        "roc_auc":   round(roc_auc_score(y_test, y_prob), 4),
+        "recall": round(recall_score(y_test, y_pred, zero_division=0), 4),
+        "f1": round(f1_score(y_test, y_pred, zero_division=0), 4),
+        "roc_auc": round(roc_auc_score(y_test, y_prob), 4),
     }
     return metrics
 
