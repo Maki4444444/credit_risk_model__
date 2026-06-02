@@ -132,3 +132,4 @@ class HealthResponse(BaseModel):
     status: str = Field(..., example="ok")
     model_name: str = Field(..., example="credit_risk_best_model")
     model_version: str = Field(..., example="1")
+    
