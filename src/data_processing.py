@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.impute import SimpleImputer
+from sklearn.cluster import KMeans
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import MinMaxScaler, StandardScaler, LabelEncoder
 
@@ -690,6 +691,7 @@ class MissingValueImputer(BaseEstimator, TransformerMixin):
         X[self._fitted_cols] = self._imputer.transform(X[self._fitted_cols])
         return X
 
+
 # ════════════════════════════════════════════════════════════════════════════
 # SECTION 6 — Pipeline Builder
 # ════════════════════════════════════════════════════════════════════════════
@@ -836,9 +838,6 @@ def get_outlier_report(df: pd.DataFrame, columns: list) -> pd.DataFrame:
 # ════════════════════════════════════════════════════════════════════════════
 # SECTION 8 — Proxy Target Variable Engineering (Task 4)
 # ════════════════════════════════════════════════════════════════════════════
-
-from sklearn.cluster import KMeans
-
 
 def compute_rfm(
     df: pd.DataFrame,

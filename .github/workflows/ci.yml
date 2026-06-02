@@ -7,8 +7,38 @@ on:
     branches: [main]
 
 jobs:
-  placeholder:
+  lint-and-test:
     runs-on: ubuntu-latest
+
     steps:
-      - name: CI placeholder - full workflow configured in Task 6
-        run: echo "CI pipeline will be configured in Task 6"
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Cache pip dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Lint with flake8
+        run: |
+          flake8 src/ tests/ \
+            --max-line-length=100 \
+            --exclude=__pycache__,.venv,venv \
+            --ignore=E501,W503
+
+      - name: Run tests with pytest
+        run: |
+          pytest tests/test_data_processing.py -v --tb=short
