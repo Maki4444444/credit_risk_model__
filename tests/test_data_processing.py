@@ -300,4 +300,3 @@ class TestBuildModelDataset:
         rfm = pd.DataFrame({"CustomerId": ["C1"], "recency": [10]})
         with pytest.raises(KeyError):
             build_model_dataset(processed, rfm)
-            
