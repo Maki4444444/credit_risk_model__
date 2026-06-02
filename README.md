@@ -138,15 +138,11 @@ pip install -r requirements.txt
 | `notebooks/eda.ipynb` | Task 2 — Exploratory Data Analysis | [View](https://nbviewer.org/github/Maki4444444/credit_risk_model__/blob/main/notebooks/eda.ipynb) |
 
 
-## Tasks
-
-| Task | Description | Branch | Status |
-|---|---|---|---|
-| 1 | Business Understanding + Repo Setup | `task-1` | Completed |
-| 2 | Exploratory Data Analysis | `task-2` | Completed | 
-| 3 | Feature Engineering Pipeline | `task-3` | To Be Completed |
-| 4 | Proxy Target Variable Engineering | `task-4` | To Be Completed |
-| 5 | Model Training & MLflow Tracking | `task-5` | To Be Completed |
-| 6 | API Deployment & CI/CD | `task-6` | To Be Completed |
-
-TBC: To be completed
+Tasks
+Task	Description	Branch	Status
+1	Set up project structure, README, and Basel II business understanding	task-1	Completed
+2	Perform EDA: distributions, correlations, missing values, outliers	task-2	Completed
+3	Build feature engineering pipeline: aggregations, datetime, encoding, scaling, WoE	task-3	Completed
+4	Engineer proxy target: RFM, K‑means clustering, create is_high_risk label	task-4	Completed
+5	Train multiple models, hyperparameter tuning, MLflow tracking & registration	task-5	Completed
+6	Deploy FastAPI app, containerize with Docker, add CI/CD with GitHub Actions	task-6	Completed
